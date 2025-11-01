@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Head-Tracked Finding Waldo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h1>3D Finding Waldo</h1>
+            <p>Initializing head tracking...</p>
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <div id="instructions">
+            <h2>How to Play</h2>
+            <p>Move your head to look around the 3D scene</p>
+            <p>Find Waldo hidden behind the shapes and click him!</p>
+            <button id="start-btn">Start Game</button>
+        </div>
+
+        <div id="game-ui" style="display: none;">
+            <div id="status-bar">
+                <div id="tracking-status">
+                    <span class="status-dot"></span>
+                    <span id="tracking-text">Tracking...</span>
+                </div>
+                <div id="timer">Time: <span id="time">0</span>s</div>
+            </div>
+
+            <div id="debug-panel">
+                <div class="debug-title">Debug Info</div>
+                <div id="debug-content">
+                    <div>Raw Head: <span id="debug-raw">-</span></div>
+                    <div>Smoothed: <span id="debug-smoothed">-</span></div>
+                    <div>Relative: <span id="debug-relative">-</span></div>
+                    <div>Target Pos: <span id="debug-target">-</span></div>
+                    <div>Camera Pos: <span id="debug-camera">-</span></div>
+                </div>
+            </div>
+
+            <canvas id="game-canvas"></canvas>
+
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="face-canvas"></canvas>
+        </div>
+
+        <div id="win-screen" style="display: none;">
+            <div class="win-content">
+                <h1>You Found Waldo!</h1>
+                <p>Time: <span id="final-time">0</span> seconds</p>
+                <button id="play-again-btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+    <!-- Game modules -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>
