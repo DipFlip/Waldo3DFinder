@@ -16,3 +16,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Deployment
+.vercel
+.netlify
+dist/
+build/
