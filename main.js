@@ -1,16 +1,23 @@
 import { HeadTracker } from './headtracker.js';
+import { HandTracker } from './handtracker.js';
 import { Scene3D } from './scene.js';
 import { ShapeGenerator } from './shapes.js';
 
 class Game {
     constructor() {
         this.headTracker = null;
+        this.handTracker = null;
         this.scene3D = null;
         this.shapeGenerator = null;
 
         this.isPlaying = false;
         this.startTime = 0;
         this.timerInterval = null;
+
+        // Hand interaction state
+        this.selectedShape = null;
+        this.isDragging = false;
+        this.dragOffset = { x: 0, y: 0, z: 0 };
 
         this.elements = {
             loadingScreen: document.getElementById('loading-screen'),
@@ -22,7 +29,9 @@ class Game {
             playAgainBtn: document.getElementById('play-again-btn'),
             canvas: document.getElementById('game-canvas'),
             timeDisplay: document.getElementById('time'),
-            finalTimeDisplay: document.getElementById('final-time')
+            finalTimeDisplay: document.getElementById('final-time'),
+            webcam: document.getElementById('webcam'),
+            handCanvas: document.getElementById('hand-canvas')
         };
 
         this.init();
@@ -37,6 +46,12 @@ class Game {
             await this.headTracker.initialize();
 
             console.log('Head tracking initialized');
+
+            // Initialize hand tracking
+            this.handTracker = new HandTracker(this.elements.webcam, this.elements.handCanvas);
+            await this.handTracker.initialize();
+
+            console.log('Hand tracking initialized');
 
             // Initialize 3D scene
             this.scene3D = new Scene3D(this.elements.canvas);
@@ -154,6 +169,11 @@ class Game {
             return;
         }
 
+        // Process hand tracking frame
+        if (this.handTracker) {
+            this.handTracker.processFrame();
+        }
+
         // Update camera from head tracking
         if (this.headTracker.isCalibrated) {
             const headPos = this.headTracker.getRelativePosition();
@@ -162,6 +182,9 @@ class Game {
             // Update debug panel
             this.updateDebugPanel();
         }
+
+        // Handle hand interactions
+        this.updateHandInteraction();
 
         // Animate shapes
         this.scene3D.animate();
@@ -193,6 +216,61 @@ class Game {
 
         document.getElementById('debug-camera').textContent =
             `x:${fmt(sceneDebug.cameraRotation.x)} y:${fmt(sceneDebug.cameraRotation.y)}`;
+    }
+
+    updateHandInteraction() {
+        if (!this.handTracker || !this.handTracker.hasHandDetected()) {
+            // No hand detected, clear selection
+            this.clearSelection();
+            return;
+        }
+
+        const handPos = this.handTracker.getHandScreenPosition();
+        if (!handPos) return;
+
+        // Find the shape closest to hand position on screen
+        const closestShape = this.scene3D.findShapeAtScreenPosition(handPos.x, handPos.y);
+
+        // Check pinch state
+        const isPinching = this.handTracker.getIsPinching();
+
+        if (isPinching) {
+            if (!this.isDragging && closestShape) {
+                // Start dragging
+                this.isDragging = true;
+                this.selectedShape = closestShape;
+                console.log('Started dragging shape');
+            }
+
+            if (this.isDragging && this.selectedShape) {
+                // Continue dragging - move shape based on hand position
+                this.scene3D.moveShapeToScreenPosition(this.selectedShape, handPos.x, handPos.y);
+            }
+        } else {
+            // Not pinching
+            if (this.isDragging) {
+                // Stop dragging
+                this.isDragging = false;
+                console.log('Stopped dragging shape');
+            }
+
+            // Update selection (just highlight, don't drag)
+            if (closestShape !== this.selectedShape) {
+                this.clearSelection();
+                this.selectedShape = closestShape;
+                if (this.selectedShape) {
+                    this.scene3D.highlightShape(this.selectedShape, true);
+                }
+            }
+        }
+    }
+
+    clearSelection() {
+        if (this.selectedShape) {
+            this.scene3D.highlightShape(this.selectedShape, false);
+            this.selectedShape = null;
+        }
+        this.isDragging = false;
     }
 }
 

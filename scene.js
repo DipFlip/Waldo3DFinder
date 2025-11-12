@@ -9,6 +9,7 @@ export class Scene3D {
 
         // Camera control
         this.cameraDistance = 10;
+        this.cameraHeightOffset = 3; // Raise camera to see better
         this.cameraRotation = { x: 0, y: 0 };
         this.targetRotation = { x: 0, y: 0 };
 
@@ -170,7 +171,7 @@ export class Scene3D {
 
         // Position camera: offset from center, fixed Z distance
         this.camera.position.x = this.cameraRotation.y;
-        this.camera.position.y = this.cameraRotation.x;
+        this.camera.position.y = this.cameraRotation.x + this.cameraHeightOffset;
         this.camera.position.z = this.cameraDistance;
 
         // Always look at scene center
@@ -221,6 +222,75 @@ export class Scene3D {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    findShapeAtScreenPosition(screenX, screenY) {
+        // Convert screen position (0-1) to NDC (-1 to +1)
+        const ndcX = screenX * 2 - 1;
+        const ndcY = -(screenY * 2 - 1); // Invert Y for screen coords
+
+        // Use raycaster to find shapes
+        this.mouse.x = ndcX;
+        this.mouse.y = ndcY;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+
+        // Check intersection with all shapes (excluding Waldo)
+        const intersects = this.raycaster.intersectObjects(this.shapes, false);
+
+        if (intersects.length > 0) {
+            return intersects[0].object;
+        }
+
+        return null;
+    }
+
+    moveShapeToScreenPosition(shape, screenX, screenY) {
+        // Convert screen position to world position
+        // We'll keep the shape's current Z position and only update X and Y
+
+        const ndcX = screenX * 2 - 1;
+        const ndcY = -(screenY * 2 - 1);
+
+        // Create a vector at the shape's current depth
+        const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
+        vector.unproject(this.camera);
+
+        // Calculate direction from camera to point
+        const dir = vector.sub(this.camera.position).normalize();
+
+        // Calculate distance to shape's Z plane
+        const distance = (shape.position.z - this.camera.position.z) / dir.z;
+
+        // Calculate new position
+        const newPos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+
+        // Update shape position with smoothing
+        const smoothing = 0.3;
+        shape.position.x += (newPos.x - shape.position.x) * smoothing;
+        shape.position.y += (newPos.y - shape.position.y) * smoothing;
+    }
+
+    highlightShape(shape, enabled) {
+        if (!shape) return;
+
+        if (enabled) {
+            // Store original emissive color if not already stored
+            if (!shape.userData.originalEmissive) {
+                shape.userData.originalEmissive = shape.material.emissive ? shape.material.emissive.clone() : new THREE.Color(0x000000);
+                shape.userData.originalEmissiveIntensity = shape.material.emissiveIntensity || 0;
+            }
+
+            // Add glow effect
+            shape.material.emissive = new THREE.Color(0xffff00); // Yellow glow
+            shape.material.emissiveIntensity = 0.5;
+        } else {
+            // Restore original emissive color
+            if (shape.userData.originalEmissive) {
+                shape.material.emissive = shape.userData.originalEmissive.clone();
+                shape.material.emissiveIntensity = shape.userData.originalEmissiveIntensity;
+            }
+        }
     }
 
     animate(deltaTime) {
