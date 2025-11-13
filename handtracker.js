@@ -4,7 +4,9 @@ export class HandTracker {
         this.canvasElement = canvasElement;
         this.canvasCtx = canvasElement ? canvasElement.getContext('2d') : null;
         this.hands = null;
+        this.camera = null;
         this.isTracking = false;
+        this.isReady = false;
 
         // Hand tracking data
         this.handLandmarks = null;
@@ -18,16 +20,24 @@ export class HandTracker {
         this.isPinching = false;
         this.pinchStrength = 0;
         this.pinchThreshold = 0.05; // Distance threshold for pinch detection
+
+        // Throttling
+        this.lastProcessTime = 0;
+        this.processingInterval = 50; // Process every 50ms (20fps)
+        this.isProcessing = false;
     }
 
     async initialize() {
         console.log('Initializing hand tracking...');
 
         // Set canvas size to match video
-        if (this.canvasElement && this.videoElement) {
+        if (this.canvasElement) {
             this.canvasElement.width = 640;
             this.canvasElement.height = 480;
         }
+
+        // Wait a bit to ensure video is ready
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Initialize MediaPipe Hands
         this.hands = new Hands({
@@ -45,13 +55,44 @@ export class HandTracker {
 
         this.hands.onResults((results) => this.onResults(results));
 
+        // Wait for model to initialize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        this.isReady = true;
         this.isTracking = true;
-        console.log('Hand tracking initialized');
+
+        console.log('Hand tracking initialized and ready');
     }
 
     async processFrame() {
-        if (this.hands && this.videoElement) {
+        // Process frames from shared video element with throttling
+        if (!this.isReady || !this.hands || !this.videoElement || this.isProcessing) {
+            return;
+        }
+
+        // Throttle processing
+        const now = Date.now();
+        if (now - this.lastProcessTime < this.processingInterval) {
+            return;
+        }
+
+        // Check if video is ready
+        if (this.videoElement.readyState < 2) {
+            return;
+        }
+
+        this.isProcessing = true;
+        this.lastProcessTime = now;
+
+        try {
             await this.hands.send({ image: this.videoElement });
+        } catch (error) {
+            // Silently handle errors during processing
+            if (error.message && !error.message.includes('out of bounds')) {
+                console.warn('Hand tracking error:', error.message);
+            }
+        } finally {
+            this.isProcessing = false;
         }
     }
 
