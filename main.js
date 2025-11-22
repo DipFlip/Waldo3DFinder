@@ -31,7 +31,8 @@ class Game {
             timeDisplay: document.getElementById('time'),
             finalTimeDisplay: document.getElementById('final-time'),
             webcam: document.getElementById('webcam'),
-            handCanvas: document.getElementById('hand-canvas')
+            handCanvas: document.getElementById('hand-canvas'),
+            handCursor: document.getElementById('hand-cursor')
         };
 
         this.init();
@@ -220,16 +221,27 @@ class Game {
 
     updateHandInteraction() {
         if (!this.handTracker || !this.handTracker.hasHandDetected()) {
-            // No hand detected, clear selection
+            // No hand detected, clear selection and hide cursor
             this.clearSelection();
+            this.elements.handCursor.classList.remove('active');
             return;
         }
 
         const handPos = this.handTracker.getHandScreenPosition();
         if (!handPos) return;
 
+        // Invert X coordinate because webcam is mirrored (scaleX(-1))
+        // When hand moves right in real life, we want to select right side of screen
+        const screenX = 1 - handPos.x;
+        const screenY = handPos.y;
+
+        // Update cursor position on screen
+        this.elements.handCursor.classList.add('active');
+        this.elements.handCursor.style.left = `${screenX * window.innerWidth}px`;
+        this.elements.handCursor.style.top = `${screenY * window.innerHeight}px`;
+
         // Find the shape closest to hand position on screen
-        const closestShape = this.scene3D.findShapeAtScreenPosition(handPos.x, handPos.y);
+        const closestShape = this.scene3D.findShapeAtScreenPosition(screenX, screenY);
 
         // Check pinch state
         const isPinching = this.handTracker.getIsPinching();
@@ -244,7 +256,7 @@ class Game {
 
             if (this.isDragging && this.selectedShape) {
                 // Continue dragging - move shape based on hand position
-                this.scene3D.moveShapeToScreenPosition(this.selectedShape, handPos.x, handPos.y);
+                this.scene3D.moveShapeToScreenPosition(this.selectedShape, screenX, screenY);
             }
         } else {
             // Not pinching

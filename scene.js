@@ -275,20 +275,31 @@ export class Scene3D {
         if (!shape) return;
 
         if (enabled) {
-            // Store original emissive color if not already stored
+            // Store original properties if not already stored
             if (!shape.userData.originalEmissive) {
                 shape.userData.originalEmissive = shape.material.emissive ? shape.material.emissive.clone() : new THREE.Color(0x000000);
                 shape.userData.originalEmissiveIntensity = shape.material.emissiveIntensity || 0;
+                shape.userData.originalScale = shape.scale.clone();
             }
 
-            // Add glow effect
-            shape.material.emissive = new THREE.Color(0xffff00); // Yellow glow
-            shape.material.emissiveIntensity = 0.5;
+            // Mark as highlighted for animation
+            shape.userData.isHighlighted = true;
+            shape.userData.highlightTime = 0;
+
+            // Add bright red glow effect
+            shape.material.emissive = new THREE.Color(0xff0000); // Red glow
+            shape.material.emissiveIntensity = 1.0;
         } else {
-            // Restore original emissive color
+            // Restore original properties
+            shape.userData.isHighlighted = false;
+
             if (shape.userData.originalEmissive) {
                 shape.material.emissive = shape.userData.originalEmissive.clone();
                 shape.material.emissiveIntensity = shape.userData.originalEmissiveIntensity;
+            }
+
+            if (shape.userData.originalScale) {
+                shape.scale.copy(shape.userData.originalScale);
             }
         }
     }
@@ -306,6 +317,26 @@ export class Scene3D {
             shape.rotation.x += 0.003;
             shape.rotation.y += 0.005;
             shape.rotation.z += 0.002;
+
+            // Pulsating effect for highlighted shapes
+            if (shape.userData.isHighlighted) {
+                shape.userData.highlightTime = (shape.userData.highlightTime || 0) + 0.05;
+
+                // Pulsate scale (1.0 to 1.15)
+                const pulseScale = 1.0 + Math.sin(shape.userData.highlightTime * 3) * 0.15;
+
+                if (shape.userData.originalScale) {
+                    shape.scale.set(
+                        shape.userData.originalScale.x * pulseScale,
+                        shape.userData.originalScale.y * pulseScale,
+                        shape.userData.originalScale.z * pulseScale
+                    );
+                }
+
+                // Pulsate emissive intensity (0.8 to 1.5)
+                const pulseIntensity = 0.8 + Math.sin(shape.userData.highlightTime * 3) * 0.7;
+                shape.material.emissiveIntensity = pulseIntensity;
+            }
         });
 
         // Keep Waldo billboard (always facing camera)
