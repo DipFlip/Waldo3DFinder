@@ -285,11 +285,9 @@ export class Scene3D {
             direction.multiplyScalar(clampedDistance)
         );
 
-        // Update shape position with more responsive smoothing
-        const smoothing = 0.5; // Increased from 0.3 for better tracking
-        shape.position.x += (targetPosition.x - shape.position.x) * smoothing;
-        shape.position.y += (targetPosition.y - shape.position.y) * smoothing;
-        shape.position.z += (targetPosition.z - shape.position.z) * smoothing;
+        // Update shape position directly (no smoothing to prevent snapping on release)
+        // Direct tracking means cube stays exactly where it appears when you release
+        shape.position.copy(targetPosition);
     }
 
     highlightShape(shape, enabled) {

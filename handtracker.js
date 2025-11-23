@@ -15,16 +15,18 @@ export class HandTracker {
 
         // Hand position on screen (normalized 0-1)
         this.handScreenPosition = { x: 0.5, y: 0.5 };
-        this.handDepth = 0; // Z depth from camera
 
-        // Depth calibration
-        this.calibratedDepth = 0;
-        this.isDepthCalibrated = false;
+        // Hand scale for depth tracking
+        this.handScale = 1.0;
+        this.calibratedScale = 1.0;
+        this.isScaleCalibrated = false;
 
-        // Pinch detection
+        // Pinch detection with debouncing
         this.isPinching = false;
         this.pinchStrength = 0;
         this.pinchThreshold = 0.05; // Distance threshold for pinch detection
+        this.noPinchFrameCount = 0; // Counter for debouncing
+        this.pinchDebounceFrames = 4; // Require 4 frames without pinch to stop
 
         // Throttling
         this.lastProcessTime = 0;
@@ -118,16 +120,21 @@ export class HandTracker {
             this.handScreenPosition.x = palmCenter.x;
             this.handScreenPosition.y = palmCenter.y;
 
-            // Get hand depth from world landmarks (Z coordinate of palm center)
-            if (this.handWorldLandmarks) {
-                const palmCenterWorld = this.handWorldLandmarks[9];
-                this.handDepth = palmCenterWorld.z;
+            // Calculate hand scale (distance between wrist and middle finger tip)
+            // Wrist = landmark 0, Middle finger tip = landmark 12
+            const wrist = this.handLandmarks[0];
+            const middleTip = this.handLandmarks[12];
+            const handSize = Math.sqrt(
+                Math.pow(middleTip.x - wrist.x, 2) +
+                Math.pow(middleTip.y - wrist.y, 2) +
+                Math.pow(middleTip.z - wrist.z, 2)
+            );
+            this.handScale = handSize;
 
-                // Auto-calibrate depth on first detection
-                if (!this.isDepthCalibrated) {
-                    this.calibratedDepth = this.handDepth;
-                    this.isDepthCalibrated = true;
-                }
+            // Auto-calibrate scale on first detection
+            if (!this.isScaleCalibrated) {
+                this.calibratedScale = this.handScale;
+                this.isScaleCalibrated = true;
             }
 
             // Detect pinch gesture (thumb tip to index finger tip distance)
@@ -170,15 +177,35 @@ export class HandTracker {
         // Update pinch strength (inverse of distance, normalized)
         this.pinchStrength = Math.max(0, 1 - (distance / this.pinchThreshold));
 
-        // Pinching if distance is below threshold
+        // Check if fingers are currently pinching
+        const isPinchingNow = distance < this.pinchThreshold;
         const wasPinching = this.isPinching;
-        this.isPinching = distance < this.pinchThreshold;
 
-        // Log pinch events
-        if (this.isPinching && !wasPinching) {
-            console.log('Pinch started');
-        } else if (!this.isPinching && wasPinching) {
-            console.log('Pinch released');
+        if (isPinchingNow) {
+            // Currently pinching
+            if (!this.isPinching) {
+                // Start pinching immediately
+                this.isPinching = true;
+                console.log('Pinch started');
+            }
+            // Reset the no-pinch counter
+            this.noPinchFrameCount = 0;
+        } else {
+            // Not pinching in this frame
+            if (this.isPinching) {
+                // We were pinching, increment the no-pinch counter
+                this.noPinchFrameCount++;
+
+                // Only stop pinching after multiple consecutive frames without pinch
+                if (this.noPinchFrameCount >= this.pinchDebounceFrames) {
+                    this.isPinching = false;
+                    this.noPinchFrameCount = 0;
+                    console.log('Pinch released (after debounce)');
+                }
+            } else {
+                // Reset counter if we weren't pinching anyway
+                this.noPinchFrameCount = 0;
+            }
         }
     }
 
@@ -238,11 +265,15 @@ export class HandTracker {
     }
 
     getHandDepth() {
-        if (!this.handLandmarks || !this.isDepthCalibrated) {
+        if (!this.handLandmarks || !this.isScaleCalibrated) {
             return 0;
         }
-        // Return relative depth (negative = closer, positive = further)
-        return (this.handDepth - this.calibratedDepth) * 10; // Scale for better sensitivity
+        // Return relative depth based on hand scale
+        // Larger scale (hand closer) = negative depth
+        // Smaller scale (hand further) = positive depth
+        const scaleRatio = this.handScale / this.calibratedScale;
+        // Invert so that bigger hand = closer = negative depth
+        return (1.0 - scaleRatio) * 15; // Scale by 15 for good sensitivity
     }
 
     getIsPinching() {
