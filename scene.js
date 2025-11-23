@@ -246,7 +246,15 @@ export class Scene3D {
     }
 
     moveShapeToScreenPosition(shape, screenX, screenY, handDepth = 0) {
+        if (!shape || !shape.position) {
+            console.warn('Invalid shape in moveShapeToScreenPosition');
+            return;
+        }
+
         // Mark as being dragged
+        if (!shape.userData) {
+            shape.userData = {};
+        }
         shape.userData.isDragging = true;
 
         // Store initial distance from camera if not already stored
