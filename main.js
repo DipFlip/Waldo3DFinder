@@ -235,6 +235,9 @@ class Game {
         const screenX = 1 - handPos.x;
         const screenY = handPos.y;
 
+        // Get hand depth for Z-axis movement
+        const handDepth = this.handTracker.getHandDepth();
+
         // Update cursor position on screen
         this.elements.handCursor.classList.add('active');
         this.elements.handCursor.style.left = `${screenX * window.innerWidth}px`;
@@ -255,8 +258,8 @@ class Game {
             }
 
             if (this.isDragging && this.selectedShape) {
-                // Continue dragging - move shape based on hand position
-                this.scene3D.moveShapeToScreenPosition(this.selectedShape, screenX, screenY);
+                // Continue dragging - move shape based on hand position and depth
+                this.scene3D.moveShapeToScreenPosition(this.selectedShape, screenX, screenY, handDepth);
             }
         } else {
             // Not pinching

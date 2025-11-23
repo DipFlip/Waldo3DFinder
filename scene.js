@@ -245,30 +245,38 @@ export class Scene3D {
         return null;
     }
 
-    moveShapeToScreenPosition(shape, screenX, screenY) {
-        // Convert screen position to world position
-        // We'll keep the shape's current Z position and only update X and Y
+    moveShapeToScreenPosition(shape, screenX, screenY, handDepth = 0) {
+        // Store initial Z position if not already stored
+        if (shape.userData.initialZ === undefined) {
+            shape.userData.initialZ = shape.position.z;
+        }
 
+        // Convert screen position to world position
         const ndcX = screenX * 2 - 1;
         const ndcY = -(screenY * 2 - 1);
 
-        // Create a vector at the shape's current depth
+        // Calculate target Z position based on hand depth
+        // Negative handDepth = hand closer = shape moves towards camera (higher Z)
+        const targetZ = shape.userData.initialZ - handDepth;
+
+        // Create a vector at the target depth
         const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
         vector.unproject(this.camera);
 
         // Calculate direction from camera to point
         const dir = vector.sub(this.camera.position).normalize();
 
-        // Calculate distance to shape's Z plane
-        const distance = (shape.position.z - this.camera.position.z) / dir.z;
+        // Calculate distance to target Z plane
+        const distance = (targetZ - this.camera.position.z) / dir.z;
 
         // Calculate new position
         const newPos = this.camera.position.clone().add(dir.multiplyScalar(distance));
 
-        // Update shape position with smoothing
+        // Update shape position with smoothing (all 3 axes)
         const smoothing = 0.3;
         shape.position.x += (newPos.x - shape.position.x) * smoothing;
         shape.position.y += (newPos.y - shape.position.y) * smoothing;
+        shape.position.z += (targetZ - shape.position.z) * smoothing;
     }
 
     highlightShape(shape, enabled) {

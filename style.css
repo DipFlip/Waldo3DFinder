@@ -206,22 +206,11 @@ body {
     display: none;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
-    animation: pulse-cursor 1s ease-in-out infinite;
+    opacity: 0.9;
 }
 
 #hand-cursor.active {
     display: block;
-}
-
-@keyframes pulse-cursor {
-    0%, 100% {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 0.8;
-    }
-    50% {
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 1;
-    }
 }
 
 #webcam {

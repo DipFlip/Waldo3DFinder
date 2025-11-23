@@ -15,6 +15,11 @@ export class HandTracker {
 
         // Hand position on screen (normalized 0-1)
         this.handScreenPosition = { x: 0.5, y: 0.5 };
+        this.handDepth = 0; // Z depth from camera
+
+        // Depth calibration
+        this.calibratedDepth = 0;
+        this.isDepthCalibrated = false;
 
         // Pinch detection
         this.isPinching = false;
@@ -112,6 +117,18 @@ export class HandTracker {
             const palmCenter = this.handLandmarks[9];
             this.handScreenPosition.x = palmCenter.x;
             this.handScreenPosition.y = palmCenter.y;
+
+            // Get hand depth from world landmarks (Z coordinate of palm center)
+            if (this.handWorldLandmarks) {
+                const palmCenterWorld = this.handWorldLandmarks[9];
+                this.handDepth = palmCenterWorld.z;
+
+                // Auto-calibrate depth on first detection
+                if (!this.isDepthCalibrated) {
+                    this.calibratedDepth = this.handDepth;
+                    this.isDepthCalibrated = true;
+                }
+            }
 
             // Detect pinch gesture (thumb tip to index finger tip distance)
             this.detectPinch();
@@ -218,6 +235,14 @@ export class HandTracker {
 
     getHandScreenPosition() {
         return this.handLandmarks ? { ...this.handScreenPosition } : null;
+    }
+
+    getHandDepth() {
+        if (!this.handLandmarks || !this.isDepthCalibrated) {
+            return 0;
+        }
+        // Return relative depth (negative = closer, positive = further)
+        return (this.handDepth - this.calibratedDepth) * 10; // Scale for better sensitivity
     }
 
     getIsPinching() {
