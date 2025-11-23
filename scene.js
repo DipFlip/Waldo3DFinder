@@ -246,37 +246,39 @@ export class Scene3D {
     }
 
     moveShapeToScreenPosition(shape, screenX, screenY, handDepth = 0) {
-        // Store initial Z position if not already stored
-        if (shape.userData.initialZ === undefined) {
-            shape.userData.initialZ = shape.position.z;
+        // Store initial distance from camera if not already stored
+        if (shape.userData.initialDistance === undefined) {
+            shape.userData.initialDistance = this.camera.position.distanceTo(shape.position);
         }
 
-        // Convert screen position to world position
+        // Convert screen position to normalized device coordinates
         const ndcX = screenX * 2 - 1;
         const ndcY = -(screenY * 2 - 1);
 
-        // Calculate target Z position based on hand depth
-        // Negative handDepth = hand closer = shape moves towards camera (higher Z)
-        const targetZ = shape.userData.initialZ - handDepth;
+        // Calculate target distance from camera based on hand depth
+        // Negative handDepth = hand closer = shorter distance
+        // Positive handDepth = hand further = longer distance
+        const targetDistance = shape.userData.initialDistance + handDepth;
+        const clampedDistance = Math.max(3, Math.min(20, targetDistance)); // Clamp between 3 and 20 units
 
-        // Create a vector at the target depth
+        // Create a ray from the camera through the screen point
         const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
         vector.unproject(this.camera);
 
-        // Calculate direction from camera to point
-        const dir = vector.sub(this.camera.position).normalize();
+        // Calculate direction from camera through the screen point
+        const direction = vector.sub(this.camera.position).normalize();
 
-        // Calculate distance to target Z plane
-        const distance = (targetZ - this.camera.position.z) / dir.z;
-
-        // Calculate new position
-        const newPos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+        // Place the shape at the target distance along this ray
+        // This ensures movement is relative to camera's view direction
+        const targetPosition = this.camera.position.clone().add(
+            direction.multiplyScalar(clampedDistance)
+        );
 
         // Update shape position with smoothing (all 3 axes)
         const smoothing = 0.3;
-        shape.position.x += (newPos.x - shape.position.x) * smoothing;
-        shape.position.y += (newPos.y - shape.position.y) * smoothing;
-        shape.position.z += (targetZ - shape.position.z) * smoothing;
+        shape.position.x += (targetPosition.x - shape.position.x) * smoothing;
+        shape.position.y += (targetPosition.y - shape.position.y) * smoothing;
+        shape.position.z += (targetPosition.z - shape.position.z) * smoothing;
     }
 
     highlightShape(shape, enabled) {
