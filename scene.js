@@ -246,6 +246,9 @@ export class Scene3D {
     }
 
     moveShapeToScreenPosition(shape, screenX, screenY, handDepth = 0) {
+        // Mark as being dragged
+        shape.userData.isDragging = true;
+
         // Store initial distance from camera if not already stored
         if (shape.userData.initialDistance === undefined) {
             shape.userData.initialDistance = this.camera.position.distanceTo(shape.position);
@@ -274,8 +277,8 @@ export class Scene3D {
             direction.multiplyScalar(clampedDistance)
         );
 
-        // Update shape position with smoothing (all 3 axes)
-        const smoothing = 0.3;
+        // Update shape position with more responsive smoothing
+        const smoothing = 0.5; // Increased from 0.3 for better tracking
         shape.position.x += (targetPosition.x - shape.position.x) * smoothing;
         shape.position.y += (targetPosition.y - shape.position.y) * smoothing;
         shape.position.z += (targetPosition.z - shape.position.z) * smoothing;
@@ -289,27 +292,16 @@ export class Scene3D {
             if (!shape.userData.originalEmissive) {
                 shape.userData.originalEmissive = shape.material.emissive ? shape.material.emissive.clone() : new THREE.Color(0x000000);
                 shape.userData.originalEmissiveIntensity = shape.material.emissiveIntensity || 0;
-                shape.userData.originalScale = shape.scale.clone();
             }
 
-            // Mark as highlighted for animation
-            shape.userData.isHighlighted = true;
-            shape.userData.highlightTime = 0;
-
-            // Add bright red glow effect
+            // Add bright red glow effect (no pulsing)
             shape.material.emissive = new THREE.Color(0xff0000); // Red glow
             shape.material.emissiveIntensity = 1.0;
         } else {
             // Restore original properties
-            shape.userData.isHighlighted = false;
-
             if (shape.userData.originalEmissive) {
                 shape.material.emissive = shape.userData.originalEmissive.clone();
                 shape.material.emissiveIntensity = shape.userData.originalEmissiveIntensity;
-            }
-
-            if (shape.userData.originalScale) {
-                shape.scale.copy(shape.userData.originalScale);
             }
         }
     }
@@ -319,6 +311,11 @@ export class Scene3D {
 
         // Animate 3D shapes (gentle floating + rotation)
         this.shapes.forEach((shape, index) => {
+            // Skip animation for shapes being dragged
+            if (shape.userData.isDragging) {
+                return;
+            }
+
             // Gentle bobbing motion (up and down)
             shape.userData.baseY = shape.userData.baseY || shape.position.y;
             shape.position.y = shape.userData.baseY + Math.sin(time + index) * 0.3;
@@ -327,26 +324,6 @@ export class Scene3D {
             shape.rotation.x += 0.003;
             shape.rotation.y += 0.005;
             shape.rotation.z += 0.002;
-
-            // Pulsating effect for highlighted shapes
-            if (shape.userData.isHighlighted) {
-                shape.userData.highlightTime = (shape.userData.highlightTime || 0) + 0.05;
-
-                // Pulsate scale (1.0 to 1.15)
-                const pulseScale = 1.0 + Math.sin(shape.userData.highlightTime * 3) * 0.15;
-
-                if (shape.userData.originalScale) {
-                    shape.scale.set(
-                        shape.userData.originalScale.x * pulseScale,
-                        shape.userData.originalScale.y * pulseScale,
-                        shape.userData.originalScale.z * pulseScale
-                    );
-                }
-
-                // Pulsate emissive intensity (0.8 to 1.5)
-                const pulseIntensity = 0.8 + Math.sin(shape.userData.highlightTime * 3) * 0.7;
-                shape.material.emissiveIntensity = pulseIntensity;
-            }
         });
 
         // Keep Waldo billboard (always facing camera)

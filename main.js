@@ -266,6 +266,9 @@ class Game {
             if (this.isDragging) {
                 // Stop dragging
                 this.isDragging = false;
+                if (this.selectedShape) {
+                    this.selectedShape.userData.isDragging = false;
+                }
                 console.log('Stopped dragging shape');
             }
 
@@ -283,6 +286,8 @@ class Game {
     clearSelection() {
         if (this.selectedShape) {
             this.scene3D.highlightShape(this.selectedShape, false);
+            // Clear dragging flag so shape can animate again
+            this.selectedShape.userData.isDragging = false;
             this.selectedShape = null;
         }
         this.isDragging = false;
