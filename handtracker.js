@@ -269,11 +269,11 @@ export class HandTracker {
             return 0;
         }
         // Return relative depth based on hand scale
-        // Larger scale (hand closer) = negative depth
-        // Smaller scale (hand further) = positive depth
+        // Larger scale (hand closer) = positive depth (move towards camera)
+        // Smaller scale (hand further) = negative depth (move away)
         const scaleRatio = this.handScale / this.calibratedScale;
-        // Invert so that bigger hand = closer = negative depth
-        return (1.0 - scaleRatio) * 15; // Scale by 15 for good sensitivity
+        // Reverse direction: bigger hand = closer = positive depth
+        return (scaleRatio - 1.0) * 8; // Reduced from 15 to 8 for less sensitivity
     }
 
     getIsPinching() {

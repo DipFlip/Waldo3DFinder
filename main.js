@@ -254,6 +254,12 @@ class Game {
                 // Start dragging
                 this.isDragging = true;
                 this.selectedShape = closestShape;
+
+                // Reset the initialDistance so cube stays where it is
+                if (this.selectedShape.userData) {
+                    this.selectedShape.userData.initialDistance = undefined;
+                }
+
                 console.log('Started dragging shape');
             }
 

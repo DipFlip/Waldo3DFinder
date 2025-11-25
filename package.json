@@ -1,6 +1,6 @@
 {
   "name": "headtracker3d-waldo",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "3D head-tracked Finding Waldo game with hand tracking",
   "main": "main.js",
   "scripts": {
